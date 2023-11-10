@@ -1,0 +1,5 @@
+pubspec.lock
+.dart_tool
+example/.metadata
+example/example.iml
+example/.idea

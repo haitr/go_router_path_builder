@@ -1,0 +1,23 @@
+name: go_router_path_builder_example
+description: An usage example of go_router_path_builder.
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.1.5 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Obviously
+  go_router: ^12.1.1
+
+dev_dependencies:
+  # Add those following packages
+  build_runner: ^2.4.6
+  go_router_path_builder:
+    # Replace this path by using version number in your project
+    path: ../
+
+flutter:
+  uses-material-design: true

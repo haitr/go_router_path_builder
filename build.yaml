@@ -1,0 +1,18 @@
+targets:
+  $default:
+    builders:
+      go_router_path_builder|router:
+        enabled: true
+        generate_for:
+          - lib/*.dart
+
+builders:
+  router:
+    import: "package:go_router_path_builder/router_builder.dart"
+    builder_factories: ["router"]
+    build_extensions:
+      .dart:
+        - .router.dart
+    auto_apply: dependents
+    build_to: source
+    applies_builders: ["source_gen|combining_builder"]

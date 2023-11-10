@@ -1,0 +1,20 @@
+name: go_router_path_builder
+description: Another approach for generating go_router locations.
+version: 0.0.1
+repository: https://github.com/haitr/go_router_path_builder
+issue_tracker: https://github.com/clickup/go_router_path_builder/issues
+
+environment:
+  sdk: ">=3.1.2 <4.0.0"
+
+dependencies:
+  build: ^2.4.1
+  source_gen: ^1.4.0
+  analyzer: ^6.2.0
+  collection: ^1.17.2
+
+dev_dependencies:
+  build_runner: ^2.4.6
+
+flutter:
+  uses-material-design: true
