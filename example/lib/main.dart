@@ -85,7 +85,7 @@ class UserPage extends StatelessWidget {
   //
 }
 
-@GoRouterAnnotation(rootVariableName: 'airoute')
+@GoRouterAnnotation(routeVariableName: 'airoute')
 // ignore: unused_element
 const _routes = [
   RoutePathBuilder(

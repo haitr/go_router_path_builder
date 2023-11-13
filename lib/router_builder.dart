@@ -14,6 +14,7 @@ const _builder = 'RoutePathBuilder';
 const _pageBuilder = 'RoutePathPageBuilder';
 const _shellBuilder = 'RoutePathShellBuilder';
 
+/// Main entrance of the builder, it will be used in build.yaml
 Builder router(BuilderOptions options) {
   return PartBuilder(
     [GoRouterGenerator()],
@@ -39,12 +40,14 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
   //   return 'void main() {}';
   // }
 
+  /// Looking for top-level variable that marked with GoRouterGenerator
+  /// and generate corresponding routerConfig and route
   @override
   FutureOr<String> generateForAnnotatedElement(Element element, ConstantReader annotation, BuildStep buildStep) {
     final goRouterGen = StringBuffer();
     final classGen = StringBuffer();
     final helperGen = StringBuffer();
-    print('Router builder start -->');
+    // print('Router builder start -->');
     // final pageType = _getStringArgumentFromAnnotation(annotation, 'pageType');
     if (element is TopLevelVariableElement) {
       final value = element.computeConstantValue();
@@ -79,7 +82,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
       //TODO error handling
     }
 
-    print('<-- Router builder end.');
+    // print('<-- Router builder end.');
 
     //! Never return empty string, or it wouldn't create part file
     return goRouterGen.toString() +
