@@ -67,11 +67,11 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           '}',
         ], '\n');
         //
-        final goRootName = _getStringArgumentFromAnnotation(annotation, 'goRootArgument');
+        final goRootName = _getStringArgumentFromAnnotation(annotation, 'routerConfigVariableName');
         goRouterGen.write('final $goRootName = <RouteBase>');
         _writeGoRoutes(root, goRouterGen, childrenSep: ';');
         //
-        final rootName = _getStringArgumentFromAnnotation(annotation, 'rootArgument');
+        final rootName = _getStringArgumentFromAnnotation(annotation, 'routeVariableName');
         final defRoot = 'root';
         _writeClassRoutes(classGen, childrenNodes: root, path: defRoot);
         _writeStringBufferAtTop(classGen, 'final $rootName = ${_classNameBasedOnPaths([defRoot])}();');

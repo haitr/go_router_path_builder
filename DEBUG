@@ -1,0 +1,21 @@
+The actual dart file used in build_runner is generated in example/.dart_tool/build/entrypoint/build.dart
+
+Use it in order to attach debug session.
+
+```json
+{
+    "name": "builder",
+    "request": "launch",
+    "type": "dart",
+    "program": "example/.dart_tool/build/entrypoint/build.dart",
+    "args": [
+        "build"
+    ]
+}
+```
+
+If it doesn't exist, run
+```bash
+dart run build_runner build
+```
+to generate.
