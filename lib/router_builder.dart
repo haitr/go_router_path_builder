@@ -69,7 +69,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
         //
         final goRootName = _getStringArgumentFromAnnotation(annotation, 'routerConfigVariableName');
         goRouterGen.write('final $goRootName = <RouteBase>');
-        _writeGoRoutes(root, goRouterGen, childrenSep: ';');
+        _writeGoRoutes(root, goRouterGen, childrenSep: ';', isTopLevel: true);
         //
         final rootName = _getStringArgumentFromAnnotation(annotation, 'routeVariableName');
         final defRoot = 'root';
@@ -100,6 +100,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     List<DartObject>? children,
     StringBuffer buffer, {
     String childrenSep = ',',
+    bool isTopLevel = false,
   }) {
     if (children == null) return;
     buffer.write('[');
@@ -111,7 +112,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
       );
       if (buildType == _builder) {
         buffer.write('GoRoute(');
-        _writeGenerateRoute(element, buffer);
+        _writeGeneralRouteInfo(element, buffer, isTopLevel);
         // create builder
         //TODO type check
         final pathArguments = _getSetValue(element.getField('pathArguments'));
@@ -142,7 +143,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
       }
       if (buildType == _pageBuilder) {
         buffer.write('GoRoute(');
-        _writeGenerateRoute(element, buffer);
+        _writeGeneralRouteInfo(element, buffer, isTopLevel);
         // create builder
         final pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
         if (pageBuilder != null) {
@@ -180,8 +181,9 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     buffer.write(']$childrenSep');
   }
 
-  void _writeGenerateRoute(DartObject element, StringBuffer buffer) {
-    final path = element.getField('path')!.toStringValue();
+  void _writeGeneralRouteInfo(DartObject element, StringBuffer buffer, bool isTopLevel) {
+    var path = element.getField('path')!.toStringValue()!;
+    if (isTopLevel) path = '/' + path;
     final pathArguments = _getSetValue(element.getField('pathArguments'));
     // create path
     buffer.writeAll([
