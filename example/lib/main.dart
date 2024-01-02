@@ -39,9 +39,9 @@ class _MyHomePageState extends State<MyHomePage> {
   String path = '';
 
   void _incrementCounter() {
-    setState(() {
-      path = airoute.home.user(id: '123').detail.toString();
-    });
+    // setState(() {
+    //   path = airoute.home.user(id: '123').detail.toString();
+    // });
   }
 
   @override
@@ -88,6 +88,28 @@ class UserPage extends StatelessWidget {
 @GoRouterAnnotation(routeVariableName: 'airoute')
 // ignore: unused_element
 const _routes = [
+  RoutePathShellBuilder(
+    routes: [
+      RoutePathBuilder(
+        'user1',
+        pathArguments: {'id'},
+        pageClassType: UserPage,
+        routes: [
+          RoutePathBuilder('detail', pageClassType: MyHomePage),
+        ],
+        extra: true,
+      ),
+      RoutePathBuilder(
+        'user2',
+        pathArguments: {'id'},
+        pageClassType: UserPage,
+        routes: [
+          RoutePathBuilder('detail', pageClassType: MyHomePage),
+        ],
+        extra: true,
+      ),
+    ],
+  ),
   RoutePathBuilder(
     'home',
     pageClassType: UserPage,

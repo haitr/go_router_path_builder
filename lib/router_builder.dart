@@ -43,7 +43,8 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
   /// Looking for top-level variable that marked with GoRouterGenerator
   /// and generate corresponding routerConfig and route
   @override
-  FutureOr<String> generateForAnnotatedElement(Element element, ConstantReader annotation, BuildStep buildStep) {
+  FutureOr<String> generateForAnnotatedElement(
+      Element element, ConstantReader annotation, BuildStep buildStep) {
     final goRouterGen = StringBuffer();
     final classGen = StringBuffer();
     final helperGen = StringBuffer();
@@ -74,7 +75,8 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
         final rootName = _getStringArgumentFromAnnotation(annotation, 'routeVariableName');
         final defRoot = 'root';
         _writeClassRoutes(classGen, childrenNodes: root, path: defRoot);
-        _writeStringBufferAtTop(classGen, 'final $rootName = ${_classNameBasedOnPaths([defRoot])}();');
+        _writeStringBufferAtTop(
+            classGen, 'final $rootName = ${_classNameBasedOnPaths([defRoot])}();');
       } else {
         //TODO error handling
       }
@@ -155,10 +157,11 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
         buffer.write('ShellRoute(');
         // add options
         var pageClassType = element.getField('pageClassType')?.toTypeValue();
-        var customPageBuilder = element.getField('customPageBuilder')?.toFunctionValue();
+        var builder = element.getField('builder')?.toFunctionValue();
+        var pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
         assert(
-          pageClassType != null || customPageBuilder != null,
-          'Either pageClassType or customPageBuilder should be used.',
+          pageClassType != null || ((pageBuilder != null) ^ (builder != null)),
+          'Either [pageClassType || pageBuilder || builder] should be used.',
         );
         var parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
         if (parentNavigatorKey != null) {
@@ -247,8 +250,10 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     final argumentBuffer = StringBuffer();
     // declare arguments
     argumentBuffer.writeAll([
-      if (pathArguments.hasElement) ...pathArguments!.map((e) => 'final String ${_localVariable(e.toStringValue()!)};'),
-      if (arguments.hasElement) ...arguments!.map((e) => 'final String? ${_localVariable(e.toStringValue()!)};'),
+      if (pathArguments.hasElement)
+        ...pathArguments!.map((e) => 'final String ${_localVariable(e.toStringValue()!)};'),
+      if (arguments.hasElement)
+        ...arguments!.map((e) => 'final String? ${_localVariable(e.toStringValue()!)};'),
     ], '\n');
     // add query arguments map
     if (arguments.hasElement) {
@@ -357,14 +362,17 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
   String _initArgumentsString({Set<DartObject>? pathArguments, Set<DartObject>? arguments}) {
     final allArguments = {...pathArguments ?? {}, ...arguments ?? {}};
     return allArguments.isNotEmpty
-        ? allArguments.map((e) => '${_localVariable(e.toStringValue()!)} = ${e.toStringValue()}').join(',')
+        ? allArguments
+            .map((e) => '${_localVariable(e.toStringValue()!)} = ${e.toStringValue()}')
+            .join(',')
         : '';
   }
 
   String _argumentsString({Set<DartObject>? pathArguments, Set<DartObject>? arguments}) {
     return [
       '{',
-      if (pathArguments.hasElement) ...pathArguments!.map((e) => 'required String ${e.toStringValue()},'),
+      if (pathArguments.hasElement)
+        ...pathArguments!.map((e) => 'required String ${e.toStringValue()},'),
       if (arguments.hasElement) ...arguments!.map((e) => 'String? ${e.toStringValue()},'),
       '}',
     ].join();
@@ -372,7 +380,9 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
 
   String _inputArgumentsString({Set<DartObject>? pathArguments, Set<DartObject>? arguments}) {
     final allArguments = {...pathArguments ?? {}, ...arguments ?? {}};
-    return allArguments.isNotEmpty ? allArguments.map((e) => '${e.toStringValue()}: ${e.toStringValue()},').join() : '';
+    return allArguments.isNotEmpty
+        ? allArguments.map((e) => '${e.toStringValue()}: ${e.toStringValue()},').join()
+        : '';
   }
 }
 

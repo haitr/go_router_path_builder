@@ -139,7 +139,8 @@ class RoutePathShellBuilder extends _RouteBuilder {
   final String? navigatorKey;
   //
   final Type? pageClassType;
-  final String? customPageBuilder;
+  final Function? builder;
+  final Function? pageBuilder;
   final List<_RouteBuilder>? routes;
   final String? parentNavigatorKey;
 
@@ -148,6 +149,7 @@ class RoutePathShellBuilder extends _RouteBuilder {
     this.parentNavigatorKey,
     this.navigatorKey,
     this.pageClassType,
-    this.customPageBuilder,
+    this.builder,
+    this.pageBuilder,
   });
 }
