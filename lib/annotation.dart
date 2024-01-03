@@ -35,17 +35,21 @@ abstract class _RouteBuilder {
 }
 
 /// Corresponding to GoRoute in go_router in which using builder callback to create page elements.
-/// In order to know which type of the target page, pageClassType is required.
+/// In order to know which type of the target page, pageType is required.
 /// Due to the limitation of code generation, only input top-level | constant | static arguments.
 ///
 /// Usage:
 /// const _path1 = RoutePathBuilder(
 ///   'some_path_1',
-///   pageClassType: UserPage,
+///   pageType: UserPage,
 ///   pathArguments: ['id'],
 ///   arguments: ['sort', 'type'],
 /// );
-class RoutePathBuilder extends _RouteBuilder {
+class RoutePath extends _RouteBuilder {
+  static const String id = 'RoutePath';
+
+  final Type pageType;
+
   final String? parentNavigatorKey;
   final String path;
   final String? name;
@@ -53,14 +57,13 @@ class RoutePathBuilder extends _RouteBuilder {
   final Set<String>? arguments;
   final Function? redirect;
   final Function? onExit;
-  final Type pageClassType;
   final List<_RouteBuilder>? routes;
   final bool extra;
 
   /// Reflect to GoRoute class, using builder for building page of this route
-  const RoutePathBuilder(
+  const RoutePath(
     this.path, {
-    required this.pageClassType,
+    required this.pageType,
     this.name,
     this.parentNavigatorKey,
     this.redirect,
@@ -101,7 +104,12 @@ class RoutePathBuilder extends _RouteBuilder {
 ///   arguments: ['sort', 'type'],
 ///   redirect: _authRedirect,
 /// );
-class RoutePathPageBuilder extends _RouteBuilder {
+class RoutePathBuilder extends _RouteBuilder {
+  static const String id = 'RoutePathBuilder';
+
+  final Function? builder;
+  final Function? pageBuilder;
+
   final String? parentNavigatorKey;
   final String path;
   final String? name;
@@ -109,12 +117,12 @@ class RoutePathPageBuilder extends _RouteBuilder {
   final Set<String>? arguments;
   final Function? redirect;
   final Function? onExit;
-  final Function pageBuilder;
   final List<_RouteBuilder>? routes;
 
-  const RoutePathPageBuilder(
+  const RoutePathBuilder(
     this.path, {
-    required this.pageBuilder,
+    this.builder,
+    this.pageBuilder,
     this.name,
     this.parentNavigatorKey,
     this.redirect,
@@ -122,7 +130,10 @@ class RoutePathPageBuilder extends _RouteBuilder {
     this.pathArguments,
     this.arguments,
     this.routes,
-  });
+  }) : assert(
+          (builder != null) ^ (pageBuilder != null),
+          'use either [builder] or [pageBuilder].',
+        );
 }
 
 /// Corresponding to ShellRoute in go_router
@@ -135,21 +146,41 @@ class RoutePathPageBuilder extends _RouteBuilder {
 ///     ...
 ///   ],
 /// );
-class RoutePathShellBuilder extends _RouteBuilder {
+class RoutePathShell extends _RouteBuilder {
+  static const String id = 'RoutePathShell';
+
+  final Type pageType;
+
+  final String? parentNavigatorKey;
   final String? navigatorKey;
-  //
-  final Type? pageClassType;
+  final List<_RouteBuilder>? routes;
+
+  const RoutePathShell({
+    required this.routes,
+    required this.pageType,
+    this.parentNavigatorKey,
+    this.navigatorKey,
+  });
+}
+
+class RoutePathShellBuilder extends _RouteBuilder {
+  static const String id = 'RoutePathShellBuilder';
+
   final Function? builder;
   final Function? pageBuilder;
-  final List<_RouteBuilder>? routes;
+
   final String? parentNavigatorKey;
+  final String? navigatorKey;
+  final List<_RouteBuilder>? routes;
 
   const RoutePathShellBuilder({
     required this.routes,
     this.parentNavigatorKey,
     this.navigatorKey,
-    this.pageClassType,
     this.builder,
     this.pageBuilder,
-  });
+  }) : assert(
+          (builder != null) ^ (pageBuilder != null),
+          'use either [builder] or [pageBuilder].',
+        );
 }

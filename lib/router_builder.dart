@@ -10,9 +10,27 @@ import 'package:source_gen/source_gen.dart';
 
 import 'annotation.dart';
 
-const _builder = 'RoutePathBuilder';
-const _pageBuilder = 'RoutePathPageBuilder';
-const _shellBuilder = 'RoutePathShellBuilder';
+enum _BuilderType {
+  basic(RoutePath.id),
+  builder(RoutePathBuilder.id),
+  shell(RoutePathShell.id),
+  shellBuilder(RoutePathShellBuilder.id);
+
+  final String name;
+
+  const _BuilderType(this.name);
+
+  static bool contains(String? name) {
+    return _BuilderType.values.singleWhereOrNull(
+          (e) => e.name == name,
+        ) !=
+        null;
+  }
+
+  static _BuilderType fromName(String name) {
+    return _BuilderType.values.firstWhere((e) => e.name == name);
+  }
+}
 
 /// Main entrance of the builder, it will be used in build.yaml
 Builder router(BuilderOptions options) {
@@ -109,19 +127,19 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     for (final element in children) {
       final buildType = element.type?.getDisplayString(withNullability: false);
       assert(
-        [_builder, _pageBuilder, _shellBuilder].contains(buildType),
-        '$_builder, $_pageBuilder or $_shellBuilder class should be use as element.',
+        _BuilderType.contains(buildType),
+        '${_BuilderType.values.map((e) => e.name).join(' || ')} constant instance should be used.',
       );
-      if (buildType == _builder) {
-        buffer.write('GoRoute(');
-        _writeGeneralRouteInfo(element, buffer, isTopLevel);
-        // create builder
-        //TODO type check
-        final pathArguments = _getSetValue(element.getField('pathArguments'));
-        final pageClassType = element.getField('pageClassType')?.toTypeValue();
-        if (pageClassType != null) {
-          final type = pageClassType.getDisplayString(withNullability: false);
+      final type = _BuilderType.fromName(buildType!);
+      switch (type) {
+        case _BuilderType.basic:
+          buffer.write('GoRoute(');
+          _writeGeneralRouteInfo(element, buffer, isTopLevel);
+          // create builder
+          final pathArguments = _getSetValue(element.getField('pathArguments'));
           final arguments = _getSetValue(element.getField('arguments'));
+          final pageType = element.getField('pageType')!.toTypeValue()!;
+          final type = pageType.getDisplayString(withNullability: false);
           final extra = element.getField('extra')?.toBoolValue();
           buffer.writeAll([
             'builder: (context, state) {',
@@ -140,69 +158,81 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
             '  );',
             '},',
           ], '\n');
-        }
-        buffer.write('),');
-      }
-      if (buildType == _pageBuilder) {
-        buffer.write('GoRoute(');
-        _writeGeneralRouteInfo(element, buffer, isTopLevel);
-        // create builder
-        final pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
-        if (pageBuilder != null) {
-          buffer.write('pageBuilder: ${pageBuilder.displayName},');
-        }
-        buffer.write('),');
-      }
-      if (buildType == _shellBuilder) {
-        buffer.write('ShellRoute(');
-        // add options
-        var pageClassType = element.getField('pageClassType')?.toTypeValue();
-        var builder = element.getField('builder')?.toFunctionValue();
-        var pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
-        assert(
-          pageClassType != null || ((pageBuilder != null) ^ (builder != null)),
-          'Either [pageClassType || pageBuilder || builder] should be used.',
-        );
-        var parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
-        if (parentNavigatorKey != null) {
-          buffer.write('parentNavigatorKey: $parentNavigatorKey,');
-        }
-        var navigatorKey = element.getField('navigatorKey')?.toStringValue();
-        if (parentNavigatorKey != null) {
-          buffer.write('navigatorKey: $navigatorKey,');
-        }
-        // create children
-        var childrenNodes = _getIterableValue(element.getField('routes'));
-        if (childrenNodes != null) {
-          buffer.write('routes:');
-          _writeGoRoutes(childrenNodes, buffer);
-        }
-        buffer.write('),');
+          buffer.write('),');
+          break;
+
+        case _BuilderType.builder:
+          buffer.write('GoRoute(');
+          _writeGeneralRouteInfo(element, buffer, isTopLevel);
+          // create builder
+          final builder = element.getField('builder')?.toFunctionValue();
+          final pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
+          final actualBuilder = builder ?? pageBuilder;
+          buffer.write('pageBuilder: ${actualBuilder!.displayName},');
+          buffer.write('),');
+          break;
+
+        case _BuilderType.shell:
+          buffer.write('ShellRoute(');
+          // add options
+          _writeGeneralRouteInfo(element, buffer, isTopLevel);
+          var pageType = element.getField('pageType')!.toTypeValue()!;
+          final type = pageType.getDisplayString(withNullability: false);
+          buffer.writeAll([
+            'builder: (context, state, child) {',
+            '  return $type();',
+            '},',
+          ], '\n');
+          buffer.write('),');
+          break;
+
+        case _BuilderType.shellBuilder:
+          buffer.write('ShellRoute(');
+          // add options
+          _writeGeneralRouteInfo(element, buffer, isTopLevel);
+          var builder = element.getField('builder')?.toFunctionValue();
+          var pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
+          final actualBuilder = builder ?? pageBuilder;
+          buffer.write('pageBuilder: ${actualBuilder!.displayName},');
+          buffer.write('),');
+          break;
       }
     }
 
     buffer.write(']$childrenSep');
   }
 
+  /// append:
+  /// - path
+  /// - redirect
+  /// - parentKey
+  /// - name
+  /// - [children]
   void _writeGeneralRouteInfo(DartObject element, StringBuffer buffer, bool isTopLevel) {
-    var path = element.getField('path')!.toStringValue()!;
-    if (isTopLevel) path = '/' + path;
-    final pathArguments = _getSetValue(element.getField('pathArguments'));
-    // create path
-    buffer.writeAll([
-      'path: \'$path',
-      if (pathArguments != null) ...pathArguments.map((arg) => '/:${arg.toStringValue()}'),
-      '\',',
-    ]);
+    var path = element.getField('path')?.toStringValue();
+    if (path != null) {
+      if (isTopLevel) path = '/' + path;
+      final pathArguments = _getSetValue(element.getField('pathArguments'));
+      // create path
+      buffer.writeAll([
+        'path: \'$path',
+        if (pathArguments != null) ...pathArguments.map((arg) => '/:${arg.toStringValue()}'),
+        '\',',
+      ]);
+    }
     // add options
     final redirect = element.getField('redirect')?.toFunctionValue();
     if (redirect != null) {
       //TODO function arguments check
       buffer.write('redirect: ${redirect.displayName},');
     }
-    final parentNavigatorKey = element.getField('parentKey')?.toStringValue();
+    final parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
     if (parentNavigatorKey != null) {
       buffer.write('parentNavigatorKey: $parentNavigatorKey,');
+    }
+    final navigatorKey = element.getField('navigatorKey')?.toStringValue();
+    if (navigatorKey != null) {
+      buffer.write('navigatorKey: $navigatorKey,');
     }
     final name = element.getField('name')?.toStringValue();
     if (name != null) {
@@ -228,19 +258,20 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     // flatten _shellBuilder first
     childrenNodes = childrenNodes?.fold<List<DartObject>>([], (prev, element) {
       final buildType = element.type?.getDisplayString(withNullability: false);
-      if (buildType != null) {
-        if (buildType == _builder || buildType == _pageBuilder) {
+      final type = _BuilderType.fromName(buildType!);
+      switch (type) {
+        case _BuilderType.basic:
+        case _BuilderType.builder:
           return prev..add(element);
-        }
-        if (buildType == _shellBuilder) {
+        case _BuilderType.shell:
           final children = _getIterableValue(element.getField('routes'));
           if (children != null) {
             return prev..addAll(children);
           }
           return prev..add(element);
-        }
+        default:
+          return prev;
       }
-      return prev;
     });
     //TODO check duplicate paths
     //TODO [path] format check
