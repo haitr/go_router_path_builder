@@ -39,7 +39,7 @@ abstract class _RouteBuilder {
 /// Due to the limitation of code generation, only input top-level | constant | static arguments.
 ///
 /// Usage:
-/// const _path1 = RoutePathBuilder(
+/// const _path1 = RoutePath(
 ///   'some_path_1',
 ///   pageType: UserPage,
 ///   pathArguments: ['id'],
@@ -48,7 +48,9 @@ abstract class _RouteBuilder {
 class RoutePath extends _RouteBuilder {
   static const String id = 'RoutePath';
 
-  final Type pageType;
+  final Type? pageType;
+  final Function? builder;
+  final Function? pageBuilder;
 
   final String? parentNavigatorKey;
   final String path;
@@ -63,7 +65,10 @@ class RoutePath extends _RouteBuilder {
   /// Reflect to GoRoute class, using builder for building page of this route
   const RoutePath(
     this.path, {
-    required this.pageType,
+    this.pageType,
+    this.builder,
+    this.pageBuilder,
+    //
     this.name,
     this.parentNavigatorKey,
     this.redirect,
@@ -72,67 +77,10 @@ class RoutePath extends _RouteBuilder {
     this.arguments,
     this.routes,
     this.extra = false,
-  });
-}
-
-/// Corresponding to GoRoute in go_router in which using pageBuilder callback to create page elements.
-/// In order to build correctly, pageBuilder is required.
-/// Due to the limitation of code generation, only input top-level | constant | static arguments.
-///
-/// Usage:
-/// Page _userPageBuilder(BuildContext context, GoRouterState state) {
-///   final id = state.pathParameters['id'];
-///   final type = state.uri.queryParameters['type'];
-///   return CustomTransitionPage(
-///     key: state.pageKey,
-///     child: UserPage(id: id, type: type),
-///     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-///       return FadeTransition(
-///         opacity = CurveTween(curve: Curves.easeInOutCirc).animate(animation),
-///         child = child,
-///       );
-///     },
-///   );
-/// }
-/// FutureOr<String?> _authRedirect(BuildContext context, GoRouterState state) {
-///  return null;
-/// }
-/// const _path1 = RoutePathBuilder(
-///   'some_path_1',
-///   pageBuilder: _userPageBuilder,
-///   pathArguments: ['id'],
-///   arguments: ['sort', 'type'],
-///   redirect: _authRedirect,
-/// );
-class RoutePathBuilder extends _RouteBuilder {
-  static const String id = 'RoutePathBuilder';
-
-  final Function? builder;
-  final Function? pageBuilder;
-
-  final String? parentNavigatorKey;
-  final String path;
-  final String? name;
-  final Set<String>? pathArguments;
-  final Set<String>? arguments;
-  final Function? redirect;
-  final Function? onExit;
-  final List<_RouteBuilder>? routes;
-
-  const RoutePathBuilder(
-    this.path, {
-    this.builder,
-    this.pageBuilder,
-    this.name,
-    this.parentNavigatorKey,
-    this.redirect,
-    this.onExit,
-    this.pathArguments,
-    this.arguments,
-    this.routes,
   }) : assert(
-          (builder != null) ^ (pageBuilder != null),
-          'use either [builder] or [pageBuilder].',
+          (pageType != null ? 1 : 0) + (builder != null ? 1 : 0) + (pageBuilder != null ? 1 : 0) ==
+              1,
+          'use either [pageType], [builder] or [pageBuilder].',
         );
 }
 
@@ -149,38 +97,88 @@ class RoutePathBuilder extends _RouteBuilder {
 class RoutePathShell extends _RouteBuilder {
   static const String id = 'RoutePathShell';
 
-  final Type pageType;
-
-  final String? parentNavigatorKey;
-  final String? navigatorKey;
-  final List<_RouteBuilder>? routes;
-
-  const RoutePathShell({
-    required this.routes,
-    required this.pageType,
-    this.parentNavigatorKey,
-    this.navigatorKey,
-  });
-}
-
-class RoutePathShellBuilder extends _RouteBuilder {
-  static const String id = 'RoutePathShellBuilder';
-
+  final Type? pageType;
   final Function? builder;
   final Function? pageBuilder;
 
-  final String? parentNavigatorKey;
+  final dynamic parentNavigatorKey;
   final String? navigatorKey;
-  final List<_RouteBuilder>? routes;
+  final List<_RouteBuilder> routes;
 
-  const RoutePathShellBuilder({
+  const RoutePathShell({
     required this.routes,
-    this.parentNavigatorKey,
-    this.navigatorKey,
+    this.pageType,
     this.builder,
     this.pageBuilder,
+    //
+    this.parentNavigatorKey,
+    this.navigatorKey,
   }) : assert(
-          (builder != null) ^ (pageBuilder != null),
-          'use either [builder] or [pageBuilder].',
+          (pageType != null ? 1 : 0) + (builder != null ? 1 : 0) + (pageBuilder != null ? 1 : 0) ==
+              1,
+          'use either [pageType], [builder] or [pageBuilder].',
         );
+}
+
+//------------------------
+class RoutePathStatefulShell extends _RouteBuilder {
+  static const String id = 'RoutePathStatefulShell';
+
+  final Type? pageType;
+  final Function? builder;
+  final Function? pageBuilder;
+
+  final List<RoutePathBranch> branches;
+  final Function navigatorContainerBuilder;
+  final String? parentNavigatorKey;
+
+  const RoutePathStatefulShell({
+    required this.branches,
+    required this.navigatorContainerBuilder,
+    this.pageType,
+    this.builder,
+    this.pageBuilder,
+    //
+    this.parentNavigatorKey,
+  }) : assert(
+          (pageType != null ? 1 : 0) + (builder != null ? 1 : 0) + (pageBuilder != null ? 1 : 0) ==
+              1,
+          'use either [pageType], [builder] or [pageBuilder].',
+        );
+}
+
+class RoutePathStatefulStackShell extends _RouteBuilder {
+  static const String id = 'RoutePathStatefulStackShell';
+
+  final Type? pageType;
+  final Function? builder;
+  final Function? pageBuilder;
+
+  final List<RoutePathBranch> branches;
+  final String? parentNavigatorKey;
+
+  const RoutePathStatefulStackShell({
+    required this.branches,
+    this.pageType,
+    this.builder,
+    this.pageBuilder,
+    //
+    this.parentNavigatorKey,
+  }) : assert(
+          (pageType != null ? 1 : 0) + (builder != null ? 1 : 0) + (pageBuilder != null ? 1 : 0) ==
+              1,
+          'use either [pageType], [builder] or [pageBuilder].',
+        );
+}
+
+class RoutePathBranch extends _RouteBuilder {
+  final String? navigatorKey;
+  final String? initialLocation;
+  final List<_RouteBuilder> routes;
+
+  RoutePathBranch({
+    this.navigatorKey,
+    this.initialLocation,
+    required this.routes,
+  });
 }

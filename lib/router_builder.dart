@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart';
+import 'package:code_builder/code_builder.dart' as cb;
 import 'package:collection/collection.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -12,9 +13,9 @@ import 'annotation.dart';
 
 enum _BuilderType {
   basic(RoutePath.id),
-  builder(RoutePathBuilder.id),
   shell(RoutePathShell.id),
-  shellBuilder(RoutePathShellBuilder.id);
+  statefulShell(RoutePathStatefulShell.id),
+  statefulStackShell(RoutePathStatefulStackShell.id);
 
   final String name;
 
@@ -128,47 +129,41 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
       final buildType = element.type?.getDisplayString(withNullability: false);
       assert(
         _BuilderType.contains(buildType),
-        '${_BuilderType.values.map((e) => e.name).join(' || ')} constant instance should be used.',
+        '${_BuilderType.values.map((e) => e.name).join(' || ')} instance should be used.',
       );
       final type = _BuilderType.fromName(buildType!);
       switch (type) {
         case _BuilderType.basic:
           buffer.write('GoRoute(');
           _writeGeneralRouteInfo(element, buffer, isTopLevel);
-          // create builder
-          final pathArguments = _getSetValue(element.getField('pathArguments'));
-          final arguments = _getSetValue(element.getField('arguments'));
-          final pageType = element.getField('pageType')!.toTypeValue()!;
-          final type = pageType.getDisplayString(withNullability: false);
-          final extra = element.getField('extra')?.toBoolValue();
-          buffer.writeAll([
-            'builder: (context, state) {',
-            '  return $type(',
-            if (pathArguments != null)
-              ...pathArguments.map((arg) {
-                final argName = arg.toStringValue();
-                return '$argName: state.pathParameters[\'$argName\']!,';
-              }),
-            if (arguments != null)
-              ...arguments.map((arg) {
-                final argName = arg.toStringValue();
-                return '$argName: state.uri.queryParameters[\'$argName\']!,';
-              }),
-            if (extra == true) 'extra: state.extra,',
-            '  );',
-            '},',
-          ], '\n');
-          buffer.write('),');
-          break;
 
-        case _BuilderType.builder:
-          buffer.write('GoRoute(');
-          _writeGeneralRouteInfo(element, buffer, isTopLevel);
-          // create builder
-          final builder = element.getField('builder')?.toFunctionValue();
-          final pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
-          final actualBuilder = builder ?? pageBuilder;
-          buffer.write('pageBuilder: ${actualBuilder!.displayName},');
+          // add page builder
+          final pageType = element.getField('pageType')?.toTypeValue();
+          if (pageType != null) {
+            final type = pageType.getDisplayString(withNullability: false);
+            final pathArguments = _getSetValue(element.getField('pathArguments'));
+            final arguments = _getSetValue(element.getField('arguments'));
+            final extra = element.getField('extra')?.toBoolValue();
+            buffer.writeAll([
+              'builder: (context, state) {',
+              '  return $type(',
+              if (pathArguments != null)
+                ...pathArguments.map((arg) {
+                  final argName = arg.toStringValue();
+                  return '$argName: state.pathParameters[\'$argName\']!,';
+                }),
+              if (arguments != null)
+                ...arguments.map((arg) {
+                  final argName = arg.toStringValue();
+                  return '$argName: state.uri.queryParameters[\'$argName\']!,';
+                }),
+              if (extra == true) 'extra: state.extra,',
+              '  );',
+              '},',
+            ], '\n');
+          } else {
+            _writeBuilderInfo(element, buffer);
+          }
           buffer.write('),');
           break;
 
@@ -176,27 +171,85 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           buffer.write('ShellRoute(');
           // add options
           _writeGeneralRouteInfo(element, buffer, isTopLevel);
-          var pageType = element.getField('pageType')!.toTypeValue()!;
-          final type = pageType.getDisplayString(withNullability: false);
-          buffer.writeAll([
-            'builder: (context, state, child) {',
-            '  return $type();',
-            '},',
-          ], '\n');
-          buffer.write('),');
-          break;
 
-        case _BuilderType.shellBuilder:
-          buffer.write('ShellRoute(');
-          // add options
-          _writeGeneralRouteInfo(element, buffer, isTopLevel);
-          var builder = element.getField('builder')?.toFunctionValue();
-          var pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
-          final actualBuilder = builder ?? pageBuilder;
-          buffer.write('pageBuilder: ${actualBuilder!.displayName},');
+          // add page builder
+          var pageType = element.getField('pageType')?.toTypeValue();
+          if (pageType != null) {
+            final type = pageType.getDisplayString(withNullability: false);
+            buffer.writeAll([
+              'builder: (context, state, child) {',
+              '  return $type();',
+              '},',
+            ], '\n');
+          } else {
+            _writeBuilderInfo(element, buffer);
+          }
+
           buffer.write('),');
           break;
+        case _BuilderType.statefulShell:
+          buffer.write('StatefulShellRoute(');
+          //
+          final parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
+          if (parentNavigatorKey != null) {
+            buffer.write('parentNavigatorKey: $parentNavigatorKey,');
+          }
+
+          // add navigatorContainerBuilder
+          final builder = element.getField('navigatorContainerBuilder')!.toFunctionValue()!;
+          buffer.write('builder: ${builder.displayName},');
+
+          // add page builder
+          var pageType = element.getField('pageType')?.toTypeValue();
+          if (pageType != null) {
+            final type = pageType.getDisplayString(withNullability: false);
+            buffer.writeAll([
+              'builder: (context, state, child) {',
+              '  return $type();',
+              '},',
+            ], '\n');
+          } else {
+            _writeBuilderInfo(element, buffer);
+          }
+          // add branches
+          final branches = _getIterableValue(element.getField('branches'));
+          if (branches != null) {
+            buffer.write('branches:');
+            _writeStatefulShellBranches(branches, buffer);
+          }
+
+          buffer.write('),');
+          break;
+        case _BuilderType.statefulStackShell:
+        // TODO: Handle this case.
       }
+    }
+
+    buffer.write(']$childrenSep');
+  }
+
+  void _writeStatefulShellBranches(
+    List<DartObject>? children,
+    StringBuffer buffer, {
+    String childrenSep = ',',
+    bool isTopLevel = false,
+  }) {
+    if (children == null) return;
+    buffer.write('[');
+    for (final element in children) {
+      final buildType = element.type?.getDisplayString(withNullability: false);
+      assert(
+        buildType == 'RoutePathBranch',
+        '[RoutePathBranch] instance should be used.',
+      );
+      buffer.write('StatefulShellBranch(');
+      _writeGeneralRouteInfo(element, buffer, isTopLevel);
+      // add initialLocation
+      final initialLocation = element.getField('initialLocation')?.toStringValue();
+      if (initialLocation != null) {
+        buffer.write('initialLocation: $initialLocation,');
+      }
+      buffer.write('),');
     }
 
     buffer.write(']$childrenSep');
@@ -205,7 +258,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
   /// append:
   /// - path
   /// - redirect
-  /// - parentKey
+  /// - parentNavigatorKey
   /// - name
   /// - [children]
   void _writeGeneralRouteInfo(DartObject element, StringBuffer buffer, bool isTopLevel) {
@@ -246,6 +299,19 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     }
   }
 
+  /// append
+  /// - builder || pageBuilder
+  void _writeBuilderInfo(DartObject element, StringBuffer buffer) {
+    final builder = element.getField('builder')?.toFunctionValue();
+    if (builder != null) {
+      buffer.write('builder: ${builder.displayName},');
+    }
+    final pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
+    if (pageBuilder != null) {
+      buffer.write('pageBuilder: ${pageBuilder.displayName},');
+    }
+  }
+
   void _writeClassRoutes(
     StringBuffer buffer, {
     List<DartObject>? childrenNodes,
@@ -261,7 +327,6 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
       final type = _BuilderType.fromName(buildType!);
       switch (type) {
         case _BuilderType.basic:
-        case _BuilderType.builder:
           return prev..add(element);
         case _BuilderType.shell:
           final children = _getIterableValue(element.getField('routes'));
