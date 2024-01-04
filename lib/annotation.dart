@@ -176,7 +176,7 @@ class RoutePathBranch extends _RouteBuilder {
   final String? initialLocation;
   final List<_RouteBuilder> routes;
 
-  RoutePathBranch({
+  const RoutePathBranch({
     this.navigatorKey,
     this.initialLocation,
     required this.routes,

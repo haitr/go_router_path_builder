@@ -221,7 +221,34 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           buffer.write('),');
           break;
         case _BuilderType.statefulStackShell:
-        // TODO: Handle this case.
+          buffer.write('StatefulShellRoute.indexedStack(');
+          //
+          final parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
+          if (parentNavigatorKey != null) {
+            buffer.write('parentNavigatorKey: $parentNavigatorKey,');
+          }
+
+          // add page builder
+          var pageType = element.getField('pageType')?.toTypeValue();
+          if (pageType != null) {
+            final type = pageType.getDisplayString(withNullability: false);
+            buffer.writeAll([
+              'builder: (context, state, child) {',
+              '  return $type();',
+              '},',
+            ], '\n');
+          } else {
+            _writeBuilderInfo(element, buffer);
+          }
+          // add branches
+          final branches = _getIterableValue(element.getField('branches'));
+          if (branches != null) {
+            buffer.write('branches: <StatefulShellBranch>');
+            _writeStatefulShellBranches(branches, buffer);
+          }
+
+          buffer.write('),');
+          break;
       }
     }
 
@@ -329,9 +356,24 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
         case _BuilderType.basic:
           return prev..add(element);
         case _BuilderType.shell:
-          final children = _getIterableValue(element.getField('routes'));
-          if (children != null) {
-            return prev..addAll(children);
+          final routes = _getIterableValue(element.getField('routes'));
+          if (routes != null) {
+            return prev..addAll(routes);
+          }
+          return prev..add(element);
+        case _BuilderType.statefulShell:
+        case _BuilderType.statefulStackShell:
+          final branches = _getIterableValue(element.getField('branches'));
+          if (branches != null) {
+            final routes = branches.fold(<DartObject>[], (prev, element) {
+              // element is [RoutePathBranch] instance
+              final routes = _getIterableValue(element.getField('routes'));
+              if (routes != null) {
+                return prev..addAll(routes);
+              }
+              return prev;
+            });
+            return prev..addAll(routes);
           }
           return prev..add(element);
         default:
