@@ -33,6 +33,22 @@ enum _BuilderType {
   }
 }
 
+enum _FunctionType {
+  goRouterWidgetBuilder('GoRouterWidgetBuilder'),
+  goRouterPageBuilder('GoRouterPageBuilder'),
+  goRouterRedirect('GoRouterRedirect'),
+  exitCallback('ExitCallback'),
+  shellRouteBuilder('ShellRouteBuilder'),
+  shellRoutePageBuilder('ShellRoutePageBuilder'),
+  statefulShellRouteBuilder('StatefulShellRouteBuilder'),
+  statefulShellRoutePageBuilder('StatefulShellRoutePageBuilder'),
+  shellNavigationContainerBuilder('ShellNavigationContainerBuilder');
+
+  final String name;
+
+  const _FunctionType(this.name);
+}
+
 /// Main entrance of the builder, it will be used in build.yaml
 Builder router(BuilderOptions options) {
   return PartBuilder(
@@ -50,6 +66,14 @@ Builder router(BuilderOptions options) {
 }
 
 class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
+  final _willCheckFunctionType = <_FunctionType, List<String>>{};
+  final _navigatorClass = 'NavigatorKey';
+  final _navigatorKey = <String>{};
+
+  GoRouterGenerator() {
+    _FunctionType.values.forEach((type) => _willCheckFunctionType[type] = []);
+  }
+
   // @override
   // FutureOr<String> generate(
   //   LibraryReader library,
@@ -67,26 +91,10 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     final goRouterGen = StringBuffer();
     final classGen = StringBuffer();
     final helperGen = StringBuffer();
-    // print('Router builder start -->');
-    // final pageType = _getStringArgumentFromAnnotation(annotation, 'pageType');
     if (element is TopLevelVariableElement) {
       final value = element.computeConstantValue();
       final root = _getIterableValue(value);
       if (root != null) {
-        //
-        helperGen.writeAll([
-          'mixin _ClassRouteMixin {',
-          ' late Map<String, String?> _\$queryArgumentsMap = {};',
-          ' String get _\$queryString => _\$queryArgumentsMap.entries.fold("", (prev, e) {',
-          '   if (e.value != null) {',
-          '     final pre = _\$queryArgumentsMap.entries.first.key == e.key ? "?" : "&";',
-          '     return "\$prev\$pre\${e.key}=\${e.value}";',
-          '   }',
-          '   return prev;',
-          ' },);',
-          '}',
-        ], '\n');
-        //
         final goRootName = _getStringArgumentFromAnnotation(annotation, 'routerConfigVariableName');
         goRouterGen.write('final $goRootName = <RouteBase>');
         _writeGoRoutes(root, goRouterGen, childrenSep: ';', isTopLevel: true);
@@ -96,6 +104,8 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
         _writeClassRoutes(classGen, childrenNodes: root, path: defRoot);
         _writeStringBufferAtTop(
             classGen, 'final $rootName = ${_classNameBasedOnPaths([defRoot])}();');
+        //
+        _writeHelper(helperGen);
       } else {
         //TODO error handling
       }
@@ -106,15 +116,52 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     // print('<-- Router builder end.');
 
     //! Never return empty string, or it wouldn't create part file
-    return goRouterGen.toString() +
+    return helperGen.toString() +
+        '\n//-----------------------------------------\n' +
+        goRouterGen.toString() +
         '\n//-----------------------------------------\n' +
         classGen.toString() +
-        '\n//-----------------------------------------\n' +
-        helperGen.toString();
+        '\n//-----------------------------------------\n';
   }
 
   String _getStringArgumentFromAnnotation(ConstantReader annotation, String argument) {
     return annotation.peek(argument)!.stringValue;
+  }
+
+  void _writeHelper(StringBuffer buffer) {
+    // function type check
+    buffer.write('void _typeCheck() {');
+    _willCheckFunctionType.forEach((key, variableList) {
+      if (variableList.isNotEmpty) {
+        variableList.forEach((variable) {
+          buffer.write('$variable is ${key.name};');
+        });
+        buffer.write('//-----------');
+        buffer.write('\n');
+      }
+    });
+    buffer.write('}');
+    buffer.write('\n');
+    // navigator key
+    buffer.writeAll([
+      'class $_navigatorClass {',
+      ..._navigatorKey
+          .map((e) => 'static final $e = GlobalKey<NavigatorState>(debugLabel: \'$e\');'),
+      '}',
+    ], '\n');
+    // essential mixin
+    buffer.writeAll([
+      'mixin _ClassRouteMixin {',
+      ' late Map<String, String?> _\$queryArgumentsMap = {};',
+      ' String get _\$queryString => _\$queryArgumentsMap.entries.fold("", (prev, e) {',
+      '   if (e.value != null) {',
+      '     final pre = _\$queryArgumentsMap.entries.first.key == e.key ? "?" : "&";',
+      '     return "\$prev\$pre\${e.key}=\${e.value}";',
+      '   }',
+      '   return prev;',
+      ' },);',
+      '}',
+    ], '\n');
   }
 
   void _writeGoRoutes(
@@ -162,7 +209,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
               '},',
             ], '\n');
           } else {
-            _writeBuilderInfo(element, buffer);
+            _writeBuilderInfo(element, buffer, type);
           }
           buffer.write('),');
           break;
@@ -182,7 +229,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
               '},',
             ], '\n');
           } else {
-            _writeBuilderInfo(element, buffer);
+            _writeBuilderInfo(element, buffer, type);
           }
 
           buffer.write('),');
@@ -192,12 +239,15 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           //
           final parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
           if (parentNavigatorKey != null) {
-            buffer.write('parentNavigatorKey: $parentNavigatorKey,');
+            buffer.write('parentNavigatorKey: $_navigatorClass.$parentNavigatorKey,');
+            _navigatorKey.add(parentNavigatorKey);
           }
 
           // add navigatorContainerBuilder
           final builder = element.getField('navigatorContainerBuilder')!.toFunctionValue()!;
           buffer.write('builder: ${builder.displayName},');
+          _willCheckFunctionType[_FunctionType.shellNavigationContainerBuilder]!
+              .add(builder.displayName);
 
           // add page builder
           var pageType = element.getField('pageType')?.toTypeValue();
@@ -209,7 +259,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
               '},',
             ], '\n');
           } else {
-            _writeBuilderInfo(element, buffer);
+            _writeBuilderInfo(element, buffer, type);
           }
           // add branches
           final branches = _getIterableValue(element.getField('branches'));
@@ -225,7 +275,8 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           //
           final parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
           if (parentNavigatorKey != null) {
-            buffer.write('parentNavigatorKey: $parentNavigatorKey,');
+            buffer.write('parentNavigatorKey: $_navigatorClass.$parentNavigatorKey,');
+            _navigatorKey.add(parentNavigatorKey);
           }
 
           // add page builder
@@ -238,7 +289,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
               '},',
             ], '\n');
           } else {
-            _writeBuilderInfo(element, buffer);
+            _writeBuilderInfo(element, buffer, type);
           }
           // add branches
           final branches = _getIterableValue(element.getField('branches'));
@@ -303,16 +354,25 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     // add options
     final redirect = element.getField('redirect')?.toFunctionValue();
     if (redirect != null) {
-      //TODO function arguments check
-      buffer.write('redirect: ${redirect.displayName},');
+      final name = redirect.displayName;
+      _willCheckFunctionType[_FunctionType.goRouterRedirect]!.add(name);
+      buffer.write('redirect: $name,');
+    }
+    final onExit = element.getField('onExit')?.toFunctionValue();
+    if (onExit != null) {
+      final name = onExit.displayName;
+      _willCheckFunctionType[_FunctionType.exitCallback]!.add(name);
+      buffer.write('onExit: $onExit,');
     }
     final parentNavigatorKey = element.getField('parentNavigatorKey')?.toStringValue();
     if (parentNavigatorKey != null) {
-      buffer.write('parentNavigatorKey: $parentNavigatorKey,');
+      buffer.write('parentNavigatorKey: $_navigatorClass.$parentNavigatorKey,');
+      _navigatorKey.add(parentNavigatorKey);
     }
     final navigatorKey = element.getField('navigatorKey')?.toStringValue();
     if (navigatorKey != null) {
-      buffer.write('navigatorKey: $navigatorKey,');
+      buffer.write('navigatorKey: $_navigatorClass.$navigatorKey,');
+      _navigatorKey.add(navigatorKey);
     }
     final name = element.getField('name')?.toStringValue();
     if (name != null) {
@@ -328,14 +388,42 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
 
   /// append
   /// - builder || pageBuilder
-  void _writeBuilderInfo(DartObject element, StringBuffer buffer) {
+  void _writeBuilderInfo(DartObject element, StringBuffer buffer, _BuilderType type) {
     final builder = element.getField('builder')?.toFunctionValue();
     if (builder != null) {
-      buffer.write('builder: ${builder.displayName},');
+      final name = builder.displayName;
+      buffer.write('builder: $name,');
+      //
+      switch (type) {
+        case _BuilderType.basic:
+          _willCheckFunctionType[_FunctionType.goRouterWidgetBuilder]!.add(name);
+          break;
+        case _BuilderType.shell:
+          _willCheckFunctionType[_FunctionType.shellRouteBuilder]!.add(name);
+          break;
+        case _BuilderType.statefulShell:
+        case _BuilderType.statefulStackShell:
+          _willCheckFunctionType[_FunctionType.statefulShellRouteBuilder]!.add(name);
+          break;
+      }
     }
     final pageBuilder = element.getField('pageBuilder')?.toFunctionValue();
     if (pageBuilder != null) {
-      buffer.write('pageBuilder: ${pageBuilder.displayName},');
+      final name = pageBuilder.displayName;
+      buffer.write('pageBuilder: $name,');
+      //
+      switch (type) {
+        case _BuilderType.basic:
+          _willCheckFunctionType[_FunctionType.goRouterPageBuilder]!.add(name);
+          break;
+        case _BuilderType.shell:
+          _willCheckFunctionType[_FunctionType.shellRoutePageBuilder]!.add(name);
+          break;
+        case _BuilderType.statefulShell:
+        case _BuilderType.statefulStackShell:
+          _willCheckFunctionType[_FunctionType.statefulShellRoutePageBuilder]!.add(name);
+          break;
+      }
     }
   }
 

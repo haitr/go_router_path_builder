@@ -49,7 +49,15 @@ class RoutePath extends _RouteBuilder {
   static const String id = 'RoutePath';
 
   final Type? pageType;
+
+  /// GoRouterWidgetBuilder
+  ///
+  /// Widget Function(BuildContext context, GoRouterState state)
   final Function? builder;
+
+  /// GoRouterPageBuilder
+  ///
+  /// Page<dynamic> Function(BuildContext context, GoRouterState state)
   final Function? pageBuilder;
 
   final String? parentNavigatorKey;
@@ -71,7 +79,15 @@ class RoutePath extends _RouteBuilder {
     //
     this.name,
     this.parentNavigatorKey,
+
+    /// GoRouterRedirect
+    ///
+    /// FutureOr<String?> Function(BuildContext context, GoRouterState state)
     this.redirect,
+
+    /// ExitCallback
+    ///
+    /// FutureOr<bool> Function(BuildContext context)
     this.onExit,
     this.pathArguments,
     this.arguments,
@@ -98,10 +114,18 @@ class RoutePathShell extends _RouteBuilder {
   static const String id = 'RoutePathShell';
 
   final Type? pageType;
+
+  /// ShellRouteBuilder
+  ///
+  /// Widget Function(BuildContext context, GoRouterState state, Widget child)
   final Function? builder;
+
+  /// ShellRoutePageBuilder
+  ///
+  /// Page<dynamic> Function(BuildContext context, GoRouterState state, Widget child)
   final Function? pageBuilder;
 
-  final dynamic parentNavigatorKey;
+  final String? parentNavigatorKey;
   final String? navigatorKey;
   final List<_RouteBuilder> routes;
 
@@ -125,11 +149,23 @@ class RoutePathStatefulShell extends _RouteBuilder {
   static const String id = 'RoutePathStatefulShell';
 
   final Type? pageType;
+
+  /// StatefulShellRouteBuilder
+  ///
+  /// Widget Function(BuildContext context, GoRouterState state, StatefulNavigationShell navigationShell)
   final Function? builder;
+
+  /// StatefulShellRoutePageBuilder
+  ///
+  /// Page<dynamic> Function(BuildContext context, GoRouterState state, StatefulNavigationShell navigationShell)
   final Function? pageBuilder;
 
-  final List<RoutePathBranch> branches;
+  /// ShellNavigationContainerBuilder
+  ///
+  /// Widget Function(BuildContext context, StatefulNavigationShell navigationShell, List<Widget> children)
   final Function navigatorContainerBuilder;
+
+  final List<RoutePathBranch> branches;
   final String? parentNavigatorKey;
 
   const RoutePathStatefulShell({
@@ -151,7 +187,15 @@ class RoutePathStatefulStackShell extends _RouteBuilder {
   static const String id = 'RoutePathStatefulStackShell';
 
   final Type? pageType;
+
+  /// StatefulShellRouteBuilder
+  ///
+  /// Widget Function(BuildContext context, GoRouterState state, StatefulNavigationShell navigationShell)
   final Function? builder;
+
+  /// StatefulShellRoutePageBuilder
+  ///
+  /// Page<dynamic> Function(BuildContext context, GoRouterState state, StatefulNavigationShell navigationShell)
   final Function? pageBuilder;
 
   final List<RoutePathBranch> branches;

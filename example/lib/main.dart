@@ -88,43 +88,30 @@ class UserPage extends StatelessWidget {
 @GoRouterAnnotation(routeVariableName: 'airoute')
 // ignore: unused_element
 const _routes = [
-  RoutePathShellBuilder(
-    routes: [
-      RoutePathBuilder(
-        'user1',
-        pathArguments: {'id'},
-        pageClassType: UserPage,
+  RoutePathStatefulStackShell(
+    pageType: UserPage,
+    branches: [
+      RoutePathBranch(
         routes: [
-          RoutePathBuilder('detail', pageClassType: MyHomePage),
+          RoutePath(
+            'home',
+            pageType: UserPage,
+          ),
         ],
-        extra: true,
       ),
-      RoutePathBuilder(
-        'user2',
-        pathArguments: {'id'},
-        pageClassType: UserPage,
-        routes: [
-          RoutePathBuilder('detail', pageClassType: MyHomePage),
-        ],
-        extra: true,
-      ),
+      // RoutePathBranch(
+      //   routes: [
+      //     RoutePath(
+      //       'home1',
+      //       pageType: UserPage,
+      //     ),
+      //   ],
+      // ),
     ],
   ),
-  RoutePathBuilder(
-    'home',
-    pageClassType: UserPage,
-    routes: [
-      RoutePathBuilder(
-        'user',
-        pathArguments: {'id'},
-        pageClassType: UserPage,
-        routes: [
-          RoutePathBuilder('detail', pageClassType: MyHomePage),
-        ],
-        extra: true,
-      ),
-    ],
-    redirect: redirectHome,
+  RoutePath(
+    'home1',
+    pageType: UserPage,
   ),
 ];
 
