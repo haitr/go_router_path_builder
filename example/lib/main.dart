@@ -99,19 +99,43 @@ const _routes = [
           ),
         ],
       ),
-      // RoutePathBranch(
-      //   routes: [
-      //     RoutePath(
-      //       'home1',
-      //       pageType: UserPage,
-      //     ),
-      //   ],
-      // ),
+      RoutePathBranch(
+        routes: [
+          RoutePath(
+            'home1',
+            pageType: UserPage,
+            routes: [
+              RoutePath(
+                'home5',
+                pageType: UserPage,
+                routes: [
+                  RoutePath(
+                    'home6',
+                    pageType: UserPage,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     ],
   ),
   RoutePath(
-    'home1',
+    'home2',
     pageType: UserPage,
+    routes: [
+      RoutePath(
+        'home3',
+        pageType: UserPage,
+        routes: [
+          RoutePath(
+            'home4',
+            pageType: UserPage,
+          ),
+        ],
+      ),
+    ],
   ),
 ];
 

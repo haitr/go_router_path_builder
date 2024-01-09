@@ -87,7 +87,10 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
   /// and generate corresponding routerConfig and route
   @override
   FutureOr<String> generateForAnnotatedElement(
-      Element element, ConstantReader annotation, BuildStep buildStep) {
+    Element element,
+    ConstantReader annotation,
+    BuildStep buildStep,
+  ) {
     final goRouterGen = StringBuffer();
     final classGen = StringBuffer();
     final helperGen = StringBuffer();
@@ -97,7 +100,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
       if (root != null) {
         final goRootName = _getStringArgumentFromAnnotation(annotation, 'routerConfigVariableName');
         goRouterGen.write('final $goRootName = <RouteBase>');
-        _writeGoRoutes(root, goRouterGen, childrenSep: ';', isTopLevel: true);
+        _writeGoRoutes(root, goRouterGen, childrenSep: ';');
         //
         final rootName = _getStringArgumentFromAnnotation(annotation, 'routeVariableName');
         final defRoot = 'root';
@@ -168,7 +171,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     List<DartObject>? children,
     StringBuffer buffer, {
     String childrenSep = ',',
-    bool isTopLevel = false,
+    List<String>? paths,
   }) {
     if (children == null) return;
     buffer.write('[');
@@ -182,7 +185,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
       switch (type) {
         case _BuilderType.basic:
           buffer.write('GoRoute(');
-          _writeGeneralRouteInfo(element, buffer, isTopLevel);
+          _writeGeneralRouteInfo(element, buffer, paths: paths);
 
           // add page builder
           final pageType = element.getField('pageType')?.toTypeValue();
@@ -217,17 +220,13 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
         case _BuilderType.shell:
           buffer.write('ShellRoute(');
           // add options
-          _writeGeneralRouteInfo(element, buffer, isTopLevel);
+          _writeGeneralRouteInfo(element, buffer, paths: paths);
 
           // add page builder
           var pageType = element.getField('pageType')?.toTypeValue();
           if (pageType != null) {
             final type = pageType.getDisplayString(withNullability: false);
-            buffer.writeAll([
-              'builder: (context, state, child) {',
-              '  return $type();',
-              '},',
-            ], '\n');
+            buffer.write('builder: (context, state, child) => $type(),');
           } else {
             _writeBuilderInfo(element, buffer, type);
           }
@@ -253,11 +252,8 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           var pageType = element.getField('pageType')?.toTypeValue();
           if (pageType != null) {
             final type = pageType.getDisplayString(withNullability: false);
-            buffer.writeAll([
-              'builder: (context, state, child) {',
-              '  return $type();',
-              '},',
-            ], '\n');
+            buffer.write(
+                'builder: (context, state, navigationShell) $type(navigationShell: navigationShell),');
           } else {
             _writeBuilderInfo(element, buffer, type);
           }
@@ -265,7 +261,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           final branches = _getIterableValue(element.getField('branches'));
           if (branches != null) {
             buffer.write('branches:');
-            _writeStatefulShellBranches(branches, buffer);
+            _writeStatefulShellBranches(branches, buffer, paths: paths);
           }
 
           buffer.write('),');
@@ -283,11 +279,8 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           var pageType = element.getField('pageType')?.toTypeValue();
           if (pageType != null) {
             final type = pageType.getDisplayString(withNullability: false);
-            buffer.writeAll([
-              'builder: (context, state, child) {',
-              '  return $type();',
-              '},',
-            ], '\n');
+            buffer.write(
+                'builder: (context, state, navigationShell) => $type(navigationShell: navigationShell),');
           } else {
             _writeBuilderInfo(element, buffer, type);
           }
@@ -295,7 +288,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
           final branches = _getIterableValue(element.getField('branches'));
           if (branches != null) {
             buffer.write('branches: <StatefulShellBranch>');
-            _writeStatefulShellBranches(branches, buffer);
+            _writeStatefulShellBranches(branches, buffer, paths: paths);
           }
 
           buffer.write('),');
@@ -310,7 +303,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     List<DartObject>? children,
     StringBuffer buffer, {
     String childrenSep = ',',
-    bool isTopLevel = false,
+    List<String>? paths,
   }) {
     if (children == null) return;
     buffer.write('[');
@@ -321,7 +314,7 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
         '[RoutePathBranch] instance should be used.',
       );
       buffer.write('StatefulShellBranch(');
-      _writeGeneralRouteInfo(element, buffer, isTopLevel);
+      _writeGeneralRouteInfo(element, buffer, paths: paths);
       // add initialLocation
       final initialLocation = element.getField('initialLocation')?.toStringValue();
       if (initialLocation != null) {
@@ -339,10 +332,15 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
   /// - parentNavigatorKey
   /// - name
   /// - [children]
-  void _writeGeneralRouteInfo(DartObject element, StringBuffer buffer, bool isTopLevel) {
+  void _writeGeneralRouteInfo(
+    DartObject element,
+    StringBuffer buffer, {
+    List<String>? paths,
+  }) {
+    paths ??= [];
     var path = element.getField('path')?.toStringValue();
     if (path != null) {
-      if (isTopLevel) path = '/' + path;
+      if (paths.isEmpty) path = '/' + path;
       final pathArguments = _getSetValue(element.getField('pathArguments'));
       // create path
       buffer.writeAll([
@@ -382,7 +380,8 @@ class GoRouterGenerator extends GeneratorForAnnotation<GoRouterAnnotation> {
     final childrenNodes = _getIterableValue(element.getField('routes'));
     if (childrenNodes != null) {
       buffer.write('routes:');
-      _writeGoRoutes(childrenNodes, buffer);
+      _writeGoRoutes(childrenNodes, buffer,
+          paths: path != null ? paths.followedBy([path]).toList() : paths);
     }
   }
 
